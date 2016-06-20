@@ -17,6 +17,9 @@ namespace AttenderTest
             std::cout << "Response was:\n";
         std::cout << result.fullResponse << "\n";
 
+        if (result.killed)
+            std::cout << "Process had to be killed\n";
+
         return std::cout;
     }
 //---------------------------------------------------------------------------------------------------------------------

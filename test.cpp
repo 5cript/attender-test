@@ -1,17 +1,25 @@
 #include "test.hpp"
 
-#include <fstream>
-#include <sstream>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/process/initializers.hpp>
+#include <boost/iostreams/stream.hpp>
+
+#include <fstream>
+#include <sstream>
+#include <thread>
+#include <chrono>
+#include <atomic>
 
 namespace AttenderTest
 {
 //#####################################################################################################################
     RestTester::RestTester(std::string name, TestFile::Test test, TestOptions options)
-        : name_(std::move(name))
-        , test_(std::move(test))
-        , options_(std::move(options))
+        : name_{std::move(name)}
+        , test_{std::move(test)}
+        , options_{std::move(options)}
+        , server_{nullptr}
+        , serverStdIn_{}
     {
     }
 //---------------------------------------------------------------------------------------------------------------------
@@ -58,26 +66,33 @@ namespace AttenderTest
         return stream.str();
     }
 //---------------------------------------------------------------------------------------------------------------------
-    std::string RestTester::runServer() const
+    std::string RestTester::runServer()
     {
         using namespace boost::process;
+        using namespace boost::process::initializers;
 
         std::vector<std::string> args;
         args.push_back(options_.serverExecutable);
         args.push_back("--port=10101");
 
-        server_ = execute(
+        auto pipe = create_pipe();
+        serverStdIn_ = {pipe.sink, boost::iostreams::close_handle};
+
+        server_ = std::make_unique <boost::process::child> (execute(
             set_args(args),
+            bind_stdout(serverStdIn_),
             throw_on_error()
-        );
+        ));
+
+        return "";
     }
 //---------------------------------------------------------------------------------------------------------------------
-    TestResult RestTester::runTest() const
+    TestResult RestTester::runTest()
     {
         using namespace std::string_literals;
 
         #define FAIL(MESSAGE) \
-            TestResult{false, false, MESSAGE, ""}
+            TestResult{false, false, false, MESSAGE, ""}
 
         try
         {
@@ -136,12 +151,37 @@ namespace AttenderTest
         #undef FAIL
     }
 //---------------------------------------------------------------------------------------------------------------------
-    void cleanup() const
+    bool RestTester::cleanup() const
     {
         using namespace boost::process;
+        using namespace boost::iostreams;
 
-        auto pipe = create_pipe();
+        stream <file_descriptor_sink> os(serverStdIn_);
+        os << std::endl;
 
+        std::atomic_bool finished{false};
+        bool killed{false};
+        std::thread killTimeout {[this, &finished, &killed]
+        {
+            auto timeoutMax = 50;
+            for(int timeoutCounter = 0; timeoutCounter != timeoutMax && !finished.load(); ++timeoutCounter)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            if (!finished.load())
+            {
+                terminate(*server_);
+                killed = true;
+            }
+        }};
+
+        wait_for_exit(*server_);
+
+        finished.store(true);
+        if (killTimeout.joinable())
+            killTimeout.join();
+
+        return killed;
     }
 //---------------------------------------------------------------------------------------------------------------------
     TestResult RestTester::checkResponse(int statusCode,
@@ -163,10 +203,10 @@ namespace AttenderTest
         };
 
         #define FAIL(MESSAGE) \
-            TestResult{false, true, MESSAGE, compileResult()}
+            TestResult{false, true, false, MESSAGE, compileResult()}
 
         #define SUCCESS(MESSAGE) \
-            TestResult{true, true, MESSAGE, compileResult()}
+            TestResult{true, true, false, MESSAGE, compileResult()}
 
         if (test_.response.code)
             if (test_.response.code.get() != statusCode)

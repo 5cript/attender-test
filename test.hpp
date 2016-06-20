@@ -4,9 +4,12 @@
 #include "results.hpp"
 #include "options.hpp"
 
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/process.hpp>
+#include <boost/iostreams/device/file_descriptor.hpp>
 
 #include <vector>
+#include <memory>
 
 namespace AttenderTest
 {
@@ -14,12 +17,9 @@ namespace AttenderTest
     {
     public:
         RestTester(std::string name, TestFile::Test test, TestOptions options);
-
-        TestResult runTest() const;
-
+        TestResult runTest();
         std::string getName() const;
-
-        void cleanup() const;
+        bool cleanup() const;
 
     private:
         std::string compileRequest() const;
@@ -29,12 +29,13 @@ namespace AttenderTest
                                  std::vector <std::string> const& header,
                                  std::string const& body) const;
 
-        std::string runServer() const;
+        std::string runServer();
 
     private:
         std::string name_;
         TestFile::Test test_;
         TestOptions options_;
-        boost::process::child server_;
+        std::unique_ptr <boost::process::child> server_;
+        boost::iostreams::file_descriptor_sink serverStdIn_;
     };
 }

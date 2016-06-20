@@ -8,6 +8,7 @@ namespace AttenderTest
     {
         bool success;
         bool responseReceived;
+        bool killed;
         std::string message;
         std::string fullResponse;
     };
