@@ -18,7 +18,7 @@ namespace AttenderTest
             if (fs::is_regular_file(p))
             {
                 std::ifstream reader(p.string(), std::ios_base::binary);
-                tests.emplace_back(p.filename().string(), loadTestFromStream(reader), options);
+                tests.emplace_back(p.stem().string(), loadTestFromStream(reader), options);
             }
         }
     }

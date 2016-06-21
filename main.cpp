@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 
     std::map <std::string, TestResult> testResults;
 
-    Controller controller("tests", {"10101", 5, "D:/Development/attender/attender/bin/Debug/attender.exe"});
+    Controller controller("tests", {"10101", 3, "D:/Development/attender/attender/bin/Debug/attender.exe"});
     for (auto& test : controller)
     {
         std::cout << test.getName() << "...\n";

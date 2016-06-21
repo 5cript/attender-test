@@ -19,7 +19,8 @@ namespace AttenderTest
         , test_{std::move(test)}
         , options_{std::move(options)}
         , server_{nullptr}
-        , serverStdIn_{}
+        , serverSink_{}
+        , serverSource_{nullptr}
     {
     }
 //---------------------------------------------------------------------------------------------------------------------
@@ -70,17 +71,25 @@ namespace AttenderTest
     {
         using namespace boost::process;
         using namespace boost::process::initializers;
+        using namespace boost::iostreams;
+        using namespace std::string_literals;
 
         std::vector<std::string> args;
         args.push_back(options_.serverExecutable);
         args.push_back("--port=10101");
 
         auto pipe = create_pipe();
-        serverStdIn_ = {pipe.sink, boost::iostreams::close_handle};
+        serverSink_ = {pipe.sink, boost::iostreams::close_handle};
+        serverSource_ = std::make_unique <decltype(serverSource_)::element_type> (pipe.source, boost::iostreams::close_handle);
 
+        file_descriptor_sink sink("outputs/"s + name_ + ".txt");
         server_ = std::make_unique <boost::process::child> (execute(
             set_args(args),
-            bind_stdout(serverStdIn_),
+            bind_stdout(serverSink_),
+            bind_stdout(sink),
+            //bind_stdin(serverSink_ ),
+            //bind_stdout(serverSink_),
+            bind_stdin(*serverSource_),
             throw_on_error()
         ));
 
@@ -156,7 +165,10 @@ namespace AttenderTest
         using namespace boost::process;
         using namespace boost::iostreams;
 
-        stream <file_descriptor_sink> os(serverStdIn_);
+        //stream <file_descriptor_sink> os(serverSink_);
+        //os << std::endl;
+
+        stream <file_descriptor_sink> os(serverSink_);
         os << std::endl;
 
         std::atomic_bool finished{false};

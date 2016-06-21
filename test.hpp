@@ -36,6 +36,7 @@ namespace AttenderTest
         TestFile::Test test_;
         TestOptions options_;
         std::unique_ptr <boost::process::child> server_;
-        boost::iostreams::file_descriptor_sink serverStdIn_;
+        boost::iostreams::file_descriptor_sink serverSink_;
+        std::unique_ptr <boost::iostreams::file_descriptor_source> serverSource_;
     };
 }
