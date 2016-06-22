@@ -1,19 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <test>
 	<request>
-		<method>GE</method>
+		<method></method>
 		<url>/test1</url>
 		<protocol>HTTP</protocol>
 		<version>2.0</version>
 		<header>
 			<entry key="Host">localhost</entry>
-			<entry key="Content-Type">text/plain</entry>
-			<!-- Content-Length will be auto detected, if not supplied -->
 		</header>
-		<body>Hello</body>
 	</request>
 	<response>
-		<body></body>
-		<code>204</code>		
+		<code>404</code>		
 	</response>
 </test>
