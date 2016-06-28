@@ -29,9 +29,8 @@ namespace AttenderTest
         return name_;
     }
 //---------------------------------------------------------------------------------------------------------------------
-    std::string RestTester::compileRequest() const
+    void RestTester::compileRequest(std::ostream& stream) const
     {
-        std::stringstream stream;
         if (test_.request.method)
             stream << test_.request.method.get();
         else
@@ -61,10 +60,44 @@ namespace AttenderTest
         }
         stream << "\r\n";
 
-        if (test_.request.body)
-            stream << test_.request.body.get();
+        if (!test_.request.body)
+            return;
 
-        return stream.str();
+        auto body = test_.request.body.get();
+
+        bool scriptPart = false;
+        std::string script;
+        for (auto const& i : body)
+        {
+            if (i == '$')
+            {
+                if (scriptPart)
+                {
+                    runScript(stream, script);
+                    script.clear();
+                }
+                scriptPart = !scriptPart;
+                continue;
+            }
+
+            if (scriptPart)
+            {
+                script.push_back(i);
+            }
+            else
+                stream.put(i);
+        }
+    }
+//---------------------------------------------------------------------------------------------------------------------
+    void RestTester::runScript(std::ostream& stream, std::string const& script) const
+    {
+        if (script.substr(0, 5) == "delay")
+        {
+            auto firstParen = script.find("(");
+            auto secondParen = script.find(")");
+            auto timeS = script.substr(firstParen, secondParen-firstParen);
+            std::this_thread::sleep_for(std::chrono::seconds(std::atoll(timeS.c_str())));
+        }
     }
 //---------------------------------------------------------------------------------------------------------------------
     std::string RestTester::runServer()
@@ -103,10 +136,10 @@ namespace AttenderTest
         #define FAIL(MESSAGE) \
             TestResult{false, false, false, MESSAGE, ""}
 
+        runServer();
+
         try
         {
-            runServer();
-
             using boost::asio::ip::tcp;
             boost::asio::ip::tcp::iostream stream;
 
@@ -115,7 +148,7 @@ namespace AttenderTest
             if (!stream)
                 return FAIL(stream.error().message());
 
-            stream << compileRequest();
+            compileRequest(stream);
 
             std::string httpVersion;
             stream >> httpVersion;

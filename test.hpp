@@ -22,7 +22,7 @@ namespace AttenderTest
         bool cleanup() const;
 
     private:
-        std::string compileRequest() const;
+        void compileRequest(std::ostream& stream) const;
         TestResult checkResponse(int statusCode,
                                  std::string const& protocolVersion,
                                  std::string const& statusMessage,
@@ -30,6 +30,7 @@ namespace AttenderTest
                                  std::string const& body) const;
 
         std::string runServer();
+        void runScript(std::ostream& stream, std::string const& script) const;
 
     private:
         std::string name_;

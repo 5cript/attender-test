@@ -20,6 +20,8 @@ namespace AttenderTest
         iterator_type begin();
         iterator_type end();
 
+
+
     private:
         std::vector <RestTester> tests;
     };
